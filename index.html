@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BRU Piano Fire</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+</head>
+
+<body>
+
+<div id="home">
+  <div class="menu">
+    <h1>🎹 BRU Piano Fire</h1>
+    <button onclick="startGame()">Play</button>
+    <button class="alt" onclick="aiMode()">AI Mode</button>
+    <input type="file" id="fileInput" accept="audio/*,video/*">
+    <small>Last song remembered</small>
+  </div>
+</div>
+
+<div id="game">
+  <div id="lanes">
+    <div class="lane"></div>
+    <div class="lane"></div>
+    <div class="lane"></div>
+    <div class="lane"></div>
+  </div>
+
+  <div id="topUI">
+    <div id="hearts">❤️❤️❤️❤️❤️</div>
+    <div class="uiBtn" onclick="togglePause()">⏸</div>
+    <div class="uiBtn" onclick="toggleFS()">⛶</div>
+  </div>
+</div>
+
+<div id="result">
+  <div class="resultBox">
+    <div id="stars"></div>
+    <button onclick="backHome()">OK</button>
+  </div>
+</div>
+
+<div id="credits">
+Created by INEZA AIME BRUNO • Special thanks: holly saint gill, uci, tap
+</div>
+<style>
+:root {
+  --bg:#0e0e14;
+  --panel:#151520;
+  --tile:#6df2ff;
+  --hit:#ffffff;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:linear-gradient(180deg,#0b0b12,#141420);
+  font-family:system-ui,Segoe UI,Arial;
+  color:#fff;
+  overflow:hidden;
+}
+
+/* HOME */
+#home{
+  position:fixed; inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.menu{
+  background:var(--panel);
+  padding:24px;
+  border-radius:18px;
+  width:320px;
+  text-align:center;
+  box-shadow:0 20px 50px rgba(0,0,0,.6);
+}
+.menu h1{
+  margin:0 0 12px;
+  font-size:26px;
+}
+.menu button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:12px;
+  background:#2b7cff;
+  color:#fff;
+  font-size:16px;
+  cursor:pointer;
+}
+.menu button.alt{background:#444}
+.menu small{opacity:.7}
+
+/* GAME */
+#game{
+  display:none;
+  position:fixed;
+  inset:0;
+}
+#lanes{
+  position:absolute;
+  inset:0;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+}
+.lane{
+  position:relative;
+  border-left:1px solid rgba(255,255,255,.05);
+}
+.tile{
+  position:absolute;
+  left:10%;
+  width:80%;
+  border-radius:14px;
+  background:var(--tile);
+  box-shadow:0 0 20px rgba(255,255,255,.4);
+  transition:opacity .2s, filter .2s;
+}
+.tile.hit{
+  opacity:.3;
+  filter:brightness(2);
+}
+
+/* UI */
+#topUI{
+  position:fixed;
+  top:10px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:12px;
+  z-index:10;
+}
+.uiBtn{
+  background:#0009;
+  padding:8px 12px;
+  border-radius:10px;
+  cursor:pointer;
+}
+#hearts{font-size:18px}
+
+/* STARS */
+#result{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.resultBox{
+  background:#111;
+  padding:30px;
+  border-radius:20px;
+  text-align:center;
+}
+.star{font-size:32px}
+
+/* CREDITS */
+#credits{
+  position:fixed;
+  bottom:6px;
+  width:100%;
+  text-align:center;
+  font-size:12px;
+  opacity:.7;
+}
+</style>
+
+<script>
+/* --- AUDIO SETUP --- */
+let audioCtx, analyser, source, audio;
+let beatLevel=0;
+
+/* --- GAME STATE --- */
+let speed=1.6;
+let lives=5;
+let paused=false;
+let tiles=[];
+let startTime=0;
+
+/* --- COLORS --- */
+function randomColor(){
+  return `hsl(${Math.random()*360},80%,65%)`;
+}
+setInterval(()=>document.documentElement.style.setProperty('--tile',randomColor()),10000);
+
+/* --- START --- */
+function startGame(){
+  document.getElementById('home').style.display='none';
+  document.getElementById('game').style.display='block';
+  initAudio();
+  startTime=Date.now();
+  spawnLoop();
+}
+
+/* --- AI MODE --- */
+function aiMode(){
+  startGame();
+}
+
+/* --- AUDIO --- */
+function initAudio(){
+  audioCtx=new AudioContext();
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=256;
+  audio=new Audio();
+  audio.src="https://cdn.pixabay.com/audio/2022/03/15/audio_1c8b7f7f9c.mp3";
+  audio.crossOrigin="anonymous";
+  source=audioCtx.createMediaElementSource(audio);
+  source.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  audio.play();
+}
+
+/* --- TILE SPAWN --- */
+function spawnLoop(){
+  if(paused) return requestAnimationFrame(spawnLoop);
+  let data=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  beatLevel=data.reduce((a,b)=>a+b)/data.length;
+
+  if(tiles.length<1){
+    spawnTile(beatLevel>120);
+  }
+  speed+=0.0006;
+  updateTiles();
+  requestAnimationFrame(spawnLoop);
+}
+
+function spawnTile(longNote){
+  let lane=Math.floor(Math.random()*4);
+  let t=document.createElement('div');
+  t.className='tile';
+  t.style.height=longNote?'180px':'100px';
+  t.style.top='-200px';
+  document.querySelectorAll('.lane')[lane].appendChild(t);
+  tiles.push({el:t,lane,hold:longNote,y:-200});
+}
+
+function updateTiles(){
+  tiles.forEach((t,i)=>{
+    t.y+=speed*4;
+    t.el.style.top=t.y+'px';
+    if(t.y>innerHeight){
+      loseLife();
+      t.el.remove();
+      tiles.splice(i,1);
+    }
+  });
+}
+
+/* --- INPUT --- */
+window.addEventListener('keydown',e=>{
+  let map={q:0,w:1,e:2,r:3};
+  if(map[e.key]!=null) hit(map[e.key]);
+});
+function hit(l){
+  let t=tiles.find(t=>t.lane===l);
+  if(!t) return;
+  t.el.classList.add('hit');
+  setTimeout(()=>t.el.remove(),120);
+  tiles.splice(tiles.indexOf(t),1);
+}
+
+/* --- LIVES --- */
+function loseLife(){
+  lives--;
+  document.getElementById('hearts').textContent='❤️'.repeat(lives);
+  if(lives<=0) endGame();
+}
+
+/* --- END --- */
+function endGame(){
+  document.getElementById('game').style.display='none';
+  document.getElementById('result').style.display='flex';
+  let played=(Date.now()-startTime)/audio.duration/1000;
+  let stars=played>0.95?3:played>0.66?2:1;
+  document.getElementById('stars').innerHTML='⭐'.repeat(stars);
+}
+
+/* --- UI --- */
+function togglePause(){paused=!paused}
+function toggleFS(){
+  document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+}
+function backHome(){
+  location.reload();
+}
+</script>
+
+</body>
+</html>
