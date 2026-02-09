@@ -2,293 +2,881 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>BRU Piano Fire</title>
+<title>Piano Fire</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
 <div id="home">
+  <div class="stars-bg"></div>
   <div class="menu">
-    <h1>🎹 BRU Piano Fire</h1>
-    <button onclick="startGame()">Play</button>
-    <button class="alt" onclick="aiMode()">AI Mode</button>
-    <input type="file" id="fileInput" accept="audio/*,video/*">
-    <small>Last song remembered</small>
+    <div class="menu-header">
+      <div class="logo-icon">🎹</div>
+      <h1>PIANO<span class="fire">FIRE</span></h1>
+    </div>
+    <p class="tagline">Feel the rhythm. Tap the beat.</p>
+    
+    <button class="btn btn-primary" onclick="startGame()">
+      <span class="btn-text">PLAY</span>
+      <span class="btn-glow"></span>
+    </button>
+    <button class="btn btn-secondary" onclick="aiMode()">
+      <span class="btn-text">AI MODE</span>
+      <span class="btn-glow"></span>
+    </button>
+    
+    <div class="file-input-wrapper">
+      <input type="file" id="fileInput" accept="audio/*,video/*">
+      <label for="fileInput">Upload Song</label>
+    </div>
+    
+    <small class="credits-small">Created with 🔥 by INEZA AIME BRUNO</small>
   </div>
 </div>
 
 <div id="game">
+  <canvas id="bgCanvas"></canvas>
+  
   <div id="lanes">
-    <div class="lane"></div>
-    <div class="lane"></div>
-    <div class="lane"></div>
-    <div class="lane"></div>
+    <div class="lane" data-lane="0">
+      <div class="lane-guide"></div>
+    </div>
+    <div class="lane" data-lane="1">
+      <div class="lane-guide"></div>
+    </div>
+    <div class="lane" data-lane="2">
+      <div class="lane-guide"></div>
+    </div>
+    <div class="lane" data-lane="3">
+      <div class="lane-guide"></div>
+    </div>
   </div>
 
   <div id="topUI">
-    <div id="hearts">❤️❤️❤️❤️❤️</div>
-    <div class="uiBtn" onclick="togglePause()">⏸</div>
-    <div class="uiBtn" onclick="toggleFS()">⛶</div>
+    <div id="score" class="score-display">0</div>
+    <div id="combo" class="combo-display"></div>
+    <div id="hearts" class="hearts-display">❤️❤️❤️❤️❤️</div>
+    <div class="ui-controls">
+      <div class="uiBtn" onclick="togglePause()" title="Pause">
+        <span id="pauseIcon">⏸</span>
+      </div>
+      <div class="uiBtn" onclick="toggleFS()" title="Fullscreen">⛶</div>
+    </div>
   </div>
+
+  <div id="hitIndicator" class="hit-indicator"></div>
 </div>
 
 <div id="result">
+  <div class="result-overlay"></div>
   <div class="resultBox">
-    <div id="stars"></div>
-    <button onclick="backHome()">OK</button>
+    <div class="result-header">
+      <h2>SONG COMPLETE!</h2>
+    </div>
+    <div id="stars" class="stars-result"></div>
+    <div class="result-stats">
+      <div class="stat">
+        <span class="stat-label">Score</span>
+        <span class="stat-value" id="finalScore">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Combo</span>
+        <span class="stat-value" id="finalCombo">0</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="backHome()">
+      <span class="btn-text">BACK</span>
+      <span class="btn-glow"></span>
+    </button>
   </div>
 </div>
 
-<div id="credits">
-Created by INEZA AIME BRUNO • Special thanks: holly saint gill, uci, tap
-</div>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap');
+
 :root {
-  --bg:#0e0e14;
-  --panel:#151520;
-  --tile:#6df2ff;
-  --hit:#ffffff;
+  --primary: #ff006e;
+  --secondary: #00f5ff;
+  --accent: #b537f2;
+  --success: #00ff88;
+  --warning: #ffd60a;
+  --dark-bg: #0a0e27;
+  --darker-bg: #050812;
+  --panel: #1a1f3a;
+  --tile: #00f5ff;
+  --tile-long: #ff006e;
 }
 
-*{box-sizing:border-box}
-body{
-  margin:0;
-  background:linear-gradient(180deg,#0b0b12,#141420);
-  font-family:system-ui,Segoe UI,Arial;
-  color:#fff;
-  overflow:hidden;
+* {
+  box-sizing: border-box;
 }
 
-/* HOME */
-#home{
-  position:fixed; inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.menu{
-  background:var(--panel);
-  padding:24px;
-  border-radius:18px;
-  width:320px;
-  text-align:center;
-  box-shadow:0 20px 50px rgba(0,0,0,.6);
-}
-.menu h1{
-  margin:0 0 12px;
-  font-size:26px;
-}
-.menu button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border:none;
-  border-radius:12px;
-  background:#2b7cff;
-  color:#fff;
-  font-size:16px;
-  cursor:pointer;
-}
-.menu button.alt{background:#444}
-.menu small{opacity:.7}
-
-/* GAME */
-#game{
-  display:none;
-  position:fixed;
-  inset:0;
-}
-#lanes{
-  position:absolute;
-  inset:0;
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-}
-.lane{
-  position:relative;
-  border-left:1px solid rgba(255,255,255,.05);
-}
-.tile{
-  position:absolute;
-  left:10%;
-  width:80%;
-  border-radius:14px;
-  background:var(--tile);
-  box-shadow:0 0 20px rgba(255,255,255,.4);
-  transition:opacity .2s, filter .2s;
-}
-.tile.hit{
-  opacity:.3;
-  filter:brightness(2);
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: linear-gradient(135deg, var(--darker-bg) 0%, #1a0033 50%, var(--dark-bg) 100%);
+  font-family: 'Space Mono', monospace;
+  color: #fff;
+  overflow: hidden;
+  background-attachment: fixed;
 }
 
-/* UI */
-#topUI{
-  position:fixed;
-  top:10px;
-  left:50%;
-  transform:translateX(-50%);
-  display:flex;
-  gap:12px;
-  z-index:10;
+/* === HOME SCREEN === */
+#home {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 }
-.uiBtn{
-  background:#0009;
-  padding:8px 12px;
-  border-radius:10px;
-  cursor:pointer;
-}
-#hearts{font-size:18px}
 
-/* STARS */
-#result{
-  position:fixed;
-  inset:0;
-  display:none;
-  align-items:center;
-  justify-content:center;
+.stars-bg {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 60px 70px, #fff, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 50px 50px, #ddd, rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 130px 80px, #fff, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 90px 10px, #fff, rgba(0,0,0,0));
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  animation: twinkle 5s infinite;
+  pointer-events: none;
 }
-.resultBox{
-  background:#111;
-  padding:30px;
-  border-radius:20px;
-  text-align:center;
-}
-.star{font-size:32px}
 
-/* CREDITS */
-#credits{
-  position:fixed;
-  bottom:6px;
-  width:100%;
-  text-align:center;
-  font-size:12px;
-  opacity:.7;
+@keyframes twinkle {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.menu {
+  background: linear-gradient(135deg, var(--panel), rgba(181, 55, 242, 0.1));
+  padding: 48px;
+  border-radius: 24px;
+  width: 380px;
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(255, 0, 110, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  backdrop-filter: blur(10px);
+  animation: menuSlideIn 0.6s ease-out;
+}
+
+@keyframes menuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-header {
+  margin-bottom: 24px;
+}
+
+.logo-icon {
+  font-size: 48px;
+  animation: float 3s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.menu h1 {
+  margin: 16px 0 0;
+  font-size: 42px;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.menu h1 .fire {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(255, 0, 110, 0.5);
+    filter: brightness(1);
+  }
+  50% {
+    text-shadow: 0 0 40px rgba(255, 0, 110, 0.8);
+    filter: brightness(1.2);
+  }
+}
+
+.tagline {
+  font-size: 14px;
+  color: var(--secondary);
+  margin: 12px 0 28px;
+  opacity: 0.9;
+  letter-spacing: 1px;
+  font-size: 12px;
+}
+
+.btn {
+  width: 100%;
+  padding: 14px 24px;
+  margin-top: 14px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.btn-text {
+  position: relative;
+  z-index: 2;
+  display: block;
+}
+
+.btn-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(255, 0, 110, 0.3);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 40px rgba(255, 0, 110, 0.6), 0 8px 32px rgba(255, 0, 110, 0.4);
+  transform: translateY(-2px);
+  letter-spacing: 2px;
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: rgba(0, 245, 255, 0.1);
+  color: var(--secondary);
+  border-color: var(--secondary);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 245, 255, 0.2);
+  box-shadow: 0 0 40px rgba(0, 245, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.file-input-wrapper {
+  position: relative;
+  margin-top: 20px;
+}
+
+#fileInput {
+  display: none;
+}
+
+.file-input-wrapper label {
+  display: block;
+  padding: 10px;
+  border: 1px dashed var(--secondary);
+  border-radius: 8px;
+  color: var(--secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.file-input-wrapper label:hover {
+  background: rgba(0, 245, 255, 0.1);
+}
+
+.credits-small {
+  display: block;
+  margin-top: 24px;
+  font-size: 11px;
+  opacity: 0.6;
+  color: var(--secondary);
+}
+
+/* === GAME SCREEN === */
+#game {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--darker-bg);
+}
+
+#bgCanvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+}
+
+#lanes {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  z-index: 1;
+}
+
+.lane {
+  position: relative;
+  border-left: 1px solid rgba(0, 245, 255, 0.1);
+  overflow: hidden;
+}
+
+.lane:last-child {
+  border-right: 1px solid rgba(0, 245, 255, 0.1);
+}
+
+.lane-guide {
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--secondary), transparent);
+  opacity: 0.3;
+  box-shadow: 0 0 10px var(--secondary);
+}
+
+.tile {
+  position: absolute;
+  left: 5%;
+  width: 90%;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--tile), rgba(0, 245, 255, 0.8));
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.1s;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+}
+
+.tile.long {
+  background: linear-gradient(135deg, var(--tile-long), rgba(255, 0, 110, 0.8));
+  box-shadow: 0 0 30px rgba(255, 0, 110, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.tile.hit {
+  opacity: 0;
+  filter: brightness(2) scale(1.1);
+  pointer-events: none;
+}
+
+/* === TOP UI === */
+#topUI {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+  gap: 20px;
+}
+
+.score-display {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--success);
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+  letter-spacing: 2px;
+}
+
+.combo-display {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--warning);
+  text-shadow: 0 0 20px rgba(255, 214, 10, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  animation: comboFloat 0.6s ease-out;
+}
+
+@keyframes comboFloat {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -120px) scale(1.2);
+  }
+}
+
+.hearts-display {
+  font-size: 20px;
+  letter-spacing: 4px;
+  text-shadow: 0 0 10px rgba(255, 0, 110, 0.4);
+}
+
+.ui-controls {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.uiBtn {
+  background: rgba(0, 245, 255, 0.1);
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  font-size: 18px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.uiBtn:hover {
+  background: rgba(0, 245, 255, 0.2);
+  box-shadow: 0 0 15px rgba(0, 245, 255, 0.4);
+  transform: scale(1.1);
+}
+
+#hitIndicator {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--success);
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+  letter-spacing: 2px;
+  z-index: 200;
+}
+
+@keyframes hitPop {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) scale(0.5) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.5) translateY(-50px);
+  }
+}
+
+/* === RESULT SCREEN === */
+#result {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.result-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+}
+
+.resultBox {
+  position: relative;
+  background: linear-gradient(135deg, var(--panel), rgba(181, 55, 242, 0.15));
+  padding: 48px;
+  border-radius: 24px;
+  text-align: center;
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  box-shadow: 0 25px 60px rgba(255, 0, 110, 0.3);
+  max-width: 420px;
+  animation: resultSlideUp 0.6s ease-out;
+}
+
+@keyframes resultSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-header h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 32px;
+  margin: 0 0 24px;
+  color: var(--secondary);
+  letter-spacing: 2px;
+}
+
+.stars-result {
+  font-size: 48px;
+  letter-spacing: 8px;
+  margin-bottom: 32px;
+  animation: starsReveal 0.6s ease-out;
+}
+
+@keyframes starsReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.result-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat {
+  background: rgba(0, 245, 255, 0.1);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 245, 255, 0.2);
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  color: var(--secondary);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.stat-value {
+  display: block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--success);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .menu {
+    width: 90%;
+    max-width: 340px;
+    padding: 32px;
+  }
+  
+  .menu h1 {
+    font-size: 32px;
+  }
+  
+  #topUI {
+    flex-wrap: wrap;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+  
+  .hearts-display {
+    font-size: 16px;
+  }
+  
+  .resultBox {
+    width: 90%;
+    padding: 32px;
+  }
+}
+
+/* === PAUSE STATE === */
+body.paused #lanes {
+  filter: brightness(0.7);
 }
 </style>
 
 <script>
-/* --- AUDIO SETUP --- */
+/* === AUDIO SETUP === */
 let audioCtx, analyser, source, audio;
-let beatLevel=0;
+let beatLevel = 0;
 
-/* --- GAME STATE --- */
-let speed=1.6;
-let lives=5;
-let paused=false;
-let tiles=[];
-let startTime=0;
+/* === GAME STATE === */
+let speed = 1.8;
+let lives = 5;
+let paused = false;
+let tiles = [];
+let startTime = 0;
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
 
-/* --- COLORS --- */
-function randomColor(){
-  return `hsl(${Math.random()*360},80%,65%)`;
+/* === CANVAS BACKGROUND === */
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
-setInterval(()=>document.documentElement.style.setProperty('--tile',randomColor()),10000);
 
-/* --- START --- */
-function startGame(){
-  document.getElementById('home').style.display='none';
-  document.getElementById('game').style.display='block';
+function drawBackground() {
+  ctx.fillStyle = 'rgba(10, 14, 39, 0.1)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  ctx.strokeStyle = `rgba(0, 245, 255, ${0.05 + beatLevel / 500})`;
+  ctx.lineWidth = 2;
+  
+  for (let i = 0; i < 3; i++) {
+    const y = (Date.now() / 10 + i * 100) % canvas.height;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+}
+
+function animateBackground() {
+  if (!paused) {
+    drawBackground();
+  }
+  requestAnimationFrame(animateBackground);
+}
+
+/* === START === */
+function startGame() {
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+  score = 0;
+  combo = 0;
+  lives = 5;
+  speed = 1.8;
   initAudio();
-  startTime=Date.now();
+  startTime = Date.now();
+  resizeCanvas();
+  animateBackground();
   spawnLoop();
 }
 
-/* --- AI MODE --- */
-function aiMode(){
+/* === AI MODE === */
+function aiMode() {
   startGame();
+  // AI will auto-hit tiles
+  setInterval(() => {
+    if (!paused && tiles.length > 0) {
+      let t = tiles[0];
+      if (t.y > 500) {
+        hit(t.lane);
+      }
+    }
+  }, 100);
 }
 
-/* --- AUDIO --- */
-function initAudio(){
-  audioCtx=new AudioContext();
-  analyser=audioCtx.createAnalyser();
-  analyser.fftSize=256;
-  audio=new Audio();
-  audio.src="https://cdn.pixabay.com/audio/2022/03/15/audio_1c8b7f7f9c.mp3";
-  audio.crossOrigin="anonymous";
-  source=audioCtx.createMediaElementSource(audio);
-  source.connect(analyser);
-  analyser.connect(audioCtx.destination);
-  audio.play();
-}
-
-/* --- TILE SPAWN --- */
-function spawnLoop(){
-  if(paused) return requestAnimationFrame(spawnLoop);
-  let data=new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(data);
-  beatLevel=data.reduce((a,b)=>a+b)/data.length;
-
-  if(tiles.length<1){
-    spawnTile(beatLevel>120);
+/* === AUDIO === */
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  audio = new Audio();
+  audio.src = "https://cdn.pixabay.com/audio/2022/03/15/audio_1c8b7f7f9c.mp3";
+  audio.crossOrigin = "anonymous";
+  try {
+    source = audioCtx.createMediaElementSource(audio);
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+  } catch (e) {
+    console.log('Audio setup note:', e);
   }
-  speed+=0.0006;
+  audio.play().catch(() => console.log('Autoplay may be restricted'));
+}
+
+/* === TILE SPAWN === */
+function spawnLoop() {
+  if (paused) {
+    requestAnimationFrame(spawnLoop);
+    return;
+  }
+
+  if (analyser) {
+    let data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(data);
+    beatLevel = data.reduce((a, b) => a + b) / data.length;
+  }
+
+  if (tiles.length < 1) {
+    spawnTile(beatLevel > 120);
+  }
+  
+  speed += 0.0004;
   updateTiles();
   requestAnimationFrame(spawnLoop);
 }
 
-function spawnTile(longNote){
-  let lane=Math.floor(Math.random()*4);
-  let t=document.createElement('div');
-  t.className='tile';
-  t.style.height=longNote?'180px':'100px';
-  t.style.top='-200px';
+function spawnTile(longNote) {
+  let lane = Math.floor(Math.random() * 4);
+  let t = document.createElement('div');
+  t.className = 'tile' + (longNote ? ' long' : '');
+  t.style.height = longNote ? '180px' : '100px';
+  t.style.top = '-200px';
   document.querySelectorAll('.lane')[lane].appendChild(t);
-  tiles.push({el:t,lane,hold:longNote,y:-200});
+  tiles.push({
+    el: t,
+    lane: lane,
+    hold: longNote,
+    y: -200,
+    hit: false
+  });
 }
 
-function updateTiles(){
-  tiles.forEach((t,i)=>{
-    t.y+=speed*4;
-    t.el.style.top=t.y+'px';
-    if(t.y>innerHeight){
-      loseLife();
+function updateTiles() {
+  tiles.forEach((t, i) => {
+    t.y += speed * 4;
+    t.el.style.top = t.y + 'px';
+    
+    if (t.y > window.innerHeight) {
+      if (!t.hit) loseLife();
       t.el.remove();
-      tiles.splice(i,1);
+      tiles.splice(i, 1);
     }
   });
 }
 
-/* --- INPUT --- */
-window.addEventListener('keydown',e=>{
-  let map={q:0,w:1,e:2,r:3};
-  if(map[e.key]!=null) hit(map[e.key]);
+/* === INPUT === */
+window.addEventListener('keydown', (e) => {
+  let map = { q: 0, w: 1, e: 2, r: 3 };
+  if (map[e.key] != null) hit(map[e.key]);
 });
-function hit(l){
-  let t=tiles.find(t=>t.lane===l);
-  if(!t) return;
+
+window.addEventListener('click', (e) => {
+  if (document.getElementById('game').style.display === 'block') {
+    const laneWidth = window.innerWidth / 4;
+    let lane = Math.floor(e.clientX / laneWidth);
+    hit(lane);
+  }
+});
+
+function hit(l) {
+  let t = tiles.find(t => t.lane === l && !t.hit);
+  if (!t) {
+    combo = 0;
+    return;
+  }
+
+  t.hit = true;
   t.el.classList.add('hit');
-  setTimeout(()=>t.el.remove(),120);
-  tiles.splice(tiles.indexOf(t),1);
+  
+  combo++;
+  maxCombo = Math.max(maxCombo, combo);
+  score += Math.floor(100 * (1 + combo / 10));
+  
+  showHitEffect();
+  updateScore();
+
+  if (combo % 5 === 0 && combo > 0) {
+    showComboEffect();
+  }
+
+  setTimeout(() => t.el.remove(), 120);
+  tiles.splice(tiles.indexOf(t), 1);
 }
 
-/* --- LIVES --- */
-function loseLife(){
+function showHitEffect() {
+  const indicator = document.getElementById('hitIndicator');
+  const messages = ['PERFECT!', 'GREAT!', 'GOOD!'];
+  indicator.textContent = messages[Math.floor(Math.random() * messages.length)];
+  indicator.style.animation = 'none';
+  setTimeout(() => {
+    indicator.style.animation = 'hitPop 0.6s ease-out forwards';
+  }, 10);
+}
+
+function showComboEffect() {
+  const comboDisplay = document.getElementById('combo');
+  comboDisplay.textContent = combo + ' COMBO!';
+  comboDisplay.style.animation = 'none';
+  setTimeout(() => {
+    comboDisplay.style.animation = 'comboFloat 0.6s ease-out forwards';
+  }, 10);
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = score;
+}
+
+/* === LIVES === */
+function loseLife() {
+  combo = 0;
   lives--;
-  document.getElementById('hearts').textContent='❤️'.repeat(lives);
-  if(lives<=0) endGame();
+  document.getElementById('hearts').textContent = '❤️'.repeat(Math.max(0, lives));
+  if (lives <= 0) endGame();
 }
 
-/* --- END --- */
-function endGame(){
-  document.getElementById('game').style.display='none';
-  document.getElementById('result').style.display='flex';
-  let played=(Date.now()-startTime)/audio.duration/1000;
-  let stars=played>0.95?3:played>0.66?2:1;
-  document.getElementById('stars').innerHTML='⭐'.repeat(stars);
+/* === END === */
+function endGame() {
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('result').style.display = 'flex';
+  
+  let played = audio.duration ? (Date.now() - startTime) / (audio.duration * 1000) : 0;
+  let stars = played > 0.95 ? 3 : played > 0.66 ? 2 : 1;
+  
+  document.getElementById('stars').innerHTML = '⭐'.repeat(stars);
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('finalCombo').textContent = maxCombo;
 }
 
-/* --- UI --- */
-function togglePause(){paused=!paused}
-function toggleFS(){
-  document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+/* === UI === */
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pauseIcon').textContent = paused ? '▶' : '⏸';
+  document.body.classList.toggle('paused');
+  if (audio) audio[paused ? 'pause' : 'play']();
 }
-function backHome(){
+
+function toggleFS() {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log('Fullscreen request failed:', err);
+    });
+  }
+}
+
+function backHome() {
   location.reload();
 }
+
+/* === WINDOW RESIZE === */
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('load', () => {
+  resizeCanvas();
+});
 </script>
 
 </body>
